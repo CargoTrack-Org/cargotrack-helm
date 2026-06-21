@@ -20,9 +20,8 @@ global:
   namespace: cargotrack-prod
 
 image:
-  # ECR registry — same account, no change needed; post-apply-setup populates this
-  registry: ""           # INJECT: same as dev (same AWS account)
-  pullPolicy: IfNotPresent   # Use cached layer in prod for faster pod restarts
+  registry: "692828329130.dkr.ecr.us-east-1.amazonaws.com"
+  pullPolicy: Always
 
 # ── Core Service ──────────────────────────────────────────────────────────────
 coreService:
@@ -31,10 +30,10 @@ coreService:
   resources:
     requests:
       cpu: "250m"
-      memory: "512Mi"
+      memory: "256Mi"
     limits:
-      cpu: "1000m"
-      memory: "1Gi"
+      cpu: "500m"
+      memory: "512Mi"
   serviceAccount:
     roleArn: ""          # INJECT: terraform output irsa_core_service_role_arn
   env:
@@ -48,10 +47,10 @@ documentService:
   resources:
     requests:
       cpu: "200m"
-      memory: "512Mi"
+      memory: "256Mi"
     limits:
-      cpu: "1000m"
-      memory: "1Gi"
+      cpu: "500m"
+      memory: "512Mi"
   serviceAccount:
     roleArn: ""          # INJECT: terraform output irsa_document_service_role_arn
   env:
@@ -70,8 +69,8 @@ aiService:
       cpu: "500m"
       memory: "512Mi"
     limits:
-      cpu: "2000m"
-      memory: "2Gi"
+      cpu: "500m"
+      memory: "512Mi"
   serviceAccount:
     roleArn: ""          # INJECT: terraform output irsa_ai_service_role_arn
   env:
