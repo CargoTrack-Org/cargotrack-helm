@@ -1,0 +1,156 @@
+---
+# ── AI Service ServiceAccount — IRSA annotated ───────────────────────────────
+# IRSA grants: SQS consume, Bedrock invoke (Nova Lite + Pro), Textract,
+#              S3 read, DynamoDB write (audit trail), KMS decrypt
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ .Values.aiService.serviceAccount.name }}
+  namespace: {{ .Values.global.namespace }}
+  annotations:
+    eks.amazonaws.com/role-arn: {{ .Values.aiService.serviceAccount.roleArn | quote }}
+  labels:
+    app: ai-service
+    {{- include "cargotrack.labels" . | nindent 4 }}
+automountServiceAccountToken: true
+---
+# ── AI Service Deployment ─────────────────────────────────────────────────────
+# Responsibilities:
+#   - SQS compliance queue consumer (background polling loop — always running)
+#   - Compliance analysis via Amazon Bedrock (Nova Lite / Pro)
+#   - Shipment Intelligence Copilot (7 capabilities)
+#   - Route Intelligence Briefing
+#   - AWS Textract document extraction
+#   - DynamoDB audit trail write
+#   - Knowledge Base: 5 JSON catalogs embedded in image
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai-service
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: ai-service
+    {{- include "cargotrack.labels" . | nindent 4 }}
+  annotations:
+    kubernetes.io/change-cause: "Helm release {{ .Release.Revision }}"
+spec:
+  replicas: {{ .Values.aiService.replicas }}
+  selector:
+    matchLabels:
+      app: ai-service
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0    # zero-downtime; SQS polling must never have a gap
+  template:
+    metadata:
+      labels:
+        app: ai-service
+    spec:
+      serviceAccountName: {{ .Values.aiService.serviceAccount.name }}
+      # 60s grace: allow in-flight Bedrock calls and SQS message processing to complete
+      terminationGracePeriodSeconds: 60
+
+      # ── Spread pods across availability zones ─────────────────────────────
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app: ai-service
+
+      # ── Pod-level security context ─────────────────────────────────────────
+      securityContext:
+        fsGroup: 1000
+
+      containers:
+        - name: ai-service
+          image: {{ .Values.image.registry }}/{{ .Values.aiService.image }}:{{ .Values.aiService.tag }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.aiService.port }}
+              protocol: TCP
+
+          # ── Non-sensitive config (AWS resource identifiers) ───────────────
+          envFrom:
+            - configMapRef:
+                name: cargotrack-aws-config
+
+          env:
+            - name: NODE_ENV
+              value: {{ .Values.aiService.env.NODE_ENV | quote }}
+            - name: PORT
+              value: {{ .Values.aiService.port | quote }}
+            - name: MOCK_AGENT
+              value: {{ .Values.aiService.env.MOCK_AGENT | quote }}
+            - name: TEXTRACT_ENABLED
+              value: {{ .Values.aiService.env.TEXTRACT_ENABLED | default "false" | quote }}
+            - name: LLM_PROVIDER
+              value: {{ .Values.aiService.env.LLM_PROVIDER | default "bedrock" | quote }}
+            {{- if .Values.aiService.env.BEDROCK_MODEL_ID }}
+            - name: BEDROCK_MODEL_ID
+              value: {{ .Values.aiService.env.BEDROCK_MODEL_ID | quote }}
+            {{- end }}
+
+            # DB credentials (ai-service reads shipment data for analysis)
+            - name: DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: cargotrack-secrets
+                  key: DATABASE_PASSWORD
+
+          # ── Resource management ───────────────────────────────────────────
+          # Higher CPU/memory: concurrent Bedrock calls + SQS polling + 5 knowledge base catalogs
+          resources:
+            {{- toYaml .Values.aiService.resources | nindent 12 }}
+
+          # ── Readiness probe ───────────────────────────────────────────────
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            initialDelaySeconds: 20
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 3
+            successThreshold: 1
+
+          # ── Liveness probe ────────────────────────────────────────────────
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            initialDelaySeconds: 40
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+            successThreshold: 1
+
+          # ── Container-level security context ──────────────────────────────
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: 1000
+---
+# ── AI Service — ClusterIP Service ───────────────────────────────────────────
+# Internal only. Called by core-service copilot proxy (/api/copilot/*)
+# and by the SQS compliance handler (internal message processing).
+apiVersion: v1
+kind: Service
+metadata:
+  name: ai-service
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: ai-service
+spec:
+  type: ClusterIP
+  selector:
+    app: ai-service
+  ports:
+    - name: http
+      port: {{ .Values.aiService.port }}
+      targetPort: http
+      protocol: TCP
