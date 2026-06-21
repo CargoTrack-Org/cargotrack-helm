@@ -105,12 +105,13 @@ spec:
             successThreshold: 1
 
           # ── Container-level security context ──────────────────────────────
-          # nginx MUST run as root to bind port 80.
-          # readOnlyRootFilesystem: false because nginx writes to /tmp and /var/cache/nginx
+          # nginx runs on port 8080 as the nginx user (UID 101) — no root required.
           securityContext:
             allowPrivilegeEscalation: false
-            runAsNonRoot: false    # nginx binds port 80 — requires root
-            readOnlyRootFilesystem: false
+            runAsNonRoot: true
+            runAsUser: 101       # nginx user
+            runAsGroup: 101      # nginx group
+            readOnlyRootFilesystem: false  # nginx writes to /tmp and /var/cache/nginx
 ---
 # ── Frontend — NodePort Service ───────────────────────────────────────────────
 # NodePort is required by the AWS Load Balancer Controller when using

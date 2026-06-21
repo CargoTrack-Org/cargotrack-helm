@@ -26,7 +26,7 @@ coreService:
       cpu: "250m"
       memory: "256Mi"
     limits:
-      cpu: "1000m"
+      cpu: "500m"
       memory: "512Mi"
   serviceAccount:
     name: core-service
@@ -46,7 +46,7 @@ documentService:
       cpu: "200m"
       memory: "256Mi"
     limits:
-      cpu: "1000m"
+      cpu: "500m"
       memory: "512Mi"
   serviceAccount:
     name: document-service
@@ -68,8 +68,8 @@ aiService:
       cpu: "500m"
       memory: "512Mi"
     limits:
-      cpu: "2000m"
-      memory: "1Gi"
+      cpu: "500m"
+      memory: "512Mi"
   serviceAccount:
     name: ai-service
     roleArn: ""       # INJECT: terraform output irsa_ai_service_role_arn
@@ -84,7 +84,7 @@ frontend:
   image: cargotrack-frontend
   tag: v1
   replicas: 2
-  port: 80
+  port: 8080    # nginx runs as non-root on port 8080 (not 80)
   resources:
     requests:
       cpu: "100m"
