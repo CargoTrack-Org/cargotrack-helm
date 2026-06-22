@@ -47,6 +47,17 @@ spec:
     metadata:
       labels:
         app: ai-service
+      # ── OTEL auto-instrumentation: keep only Node.js agent ─────────────────────────
+      # The CloudWatch Observability add-on auto-injects init containers for ALL
+      # four language agents (java, nodejs, python, dotnet) via its mutating
+      # admission webhook. ai-service is Node.js only — opt out of the other three.
+      # Without these, each pod gets 4 init containers instead of 1, wasting
+      # ~352Mi memory requests and adding startup latency.
+      annotations:
+        instrumentation.opentelemetry.io/inject-java: "false"
+        instrumentation.opentelemetry.io/inject-python: "false"
+        instrumentation.opentelemetry.io/inject-dotnet: "false"
+        instrumentation.opentelemetry.io/inject-nodejs: "true"
     spec:
       serviceAccountName: {{ .Values.aiService.serviceAccount.name }}
       # 60s grace: allow in-flight Bedrock calls and SQS message processing to complete

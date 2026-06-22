@@ -44,6 +44,14 @@ spec:
     metadata:
       labels:
         app: document-service
+      # ── OTEL auto-instrumentation: keep only Node.js agent ─────────────────────────
+      # CloudWatch Observability injects all 4 agents by default.
+      # document-service is Node.js only — opt out of java/python/dotnet.
+      annotations:
+        instrumentation.opentelemetry.io/inject-java: "false"
+        instrumentation.opentelemetry.io/inject-python: "false"
+        instrumentation.opentelemetry.io/inject-dotnet: "false"
+        instrumentation.opentelemetry.io/inject-nodejs: "true"
     spec:
       serviceAccountName: {{ .Values.documentService.serviceAccount.name }}
       terminationGracePeriodSeconds: 30   # allow in-flight S3/Textract calls to finish

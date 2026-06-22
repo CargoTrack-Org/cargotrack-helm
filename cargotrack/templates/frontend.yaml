@@ -42,6 +42,15 @@ spec:
     metadata:
       labels:
         app: frontend
+      # ── OTEL auto-instrumentation: disable all agents ─────────────────────────────
+      # The frontend container is nginx serving static files — there is no
+      # Node.js runtime process to instrument. Disable all 4 OTEL language
+      # agents to prevent 4 unnecessary init containers from being injected.
+      annotations:
+        instrumentation.opentelemetry.io/inject-java: "false"
+        instrumentation.opentelemetry.io/inject-python: "false"
+        instrumentation.opentelemetry.io/inject-dotnet: "false"
+        instrumentation.opentelemetry.io/inject-nodejs: "false"
     spec:
       serviceAccountName: frontend
       terminationGracePeriodSeconds: 30

@@ -43,6 +43,14 @@ spec:
     metadata:
       labels:
         app: core-service
+      # ── OTEL auto-instrumentation: keep only Node.js agent ─────────────────────────
+      # CloudWatch Observability injects all 4 agents (java/nodejs/python/dotnet)
+      # by default. core-service is Node.js only — opt out of the other three.
+      annotations:
+        instrumentation.opentelemetry.io/inject-java: "false"
+        instrumentation.opentelemetry.io/inject-python: "false"
+        instrumentation.opentelemetry.io/inject-dotnet: "false"
+        instrumentation.opentelemetry.io/inject-nodejs: "true"
     spec:
       serviceAccountName: {{ .Values.coreService.serviceAccount.name }}
       terminationGracePeriodSeconds: 60   # allow in-flight requests to drain
