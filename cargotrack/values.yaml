@@ -65,9 +65,9 @@ aiService:
   port: 4002
   resources:
     requests:
-      cpu: "500m"
-      memory: "512Mi"
-    limits:
+      cpu: "200m"      # Reduced from 500m: t3.medium nodes have ~300m free per node.
+      memory: "512Mi"  # ai-service is an API-bound Node.js process (Bedrock/SQS calls);
+    limits:            # steady-state CPU is low; burst up to 500m during inference.
       cpu: "500m"
       memory: "512Mi"
   serviceAccount:

@@ -62,8 +62,8 @@ aiService:
   replicas: 1
   resources:
     requests:
-      cpu: "500m"
-      memory: "512Mi"
+      cpu: "200m"      # Reduced from 500m: scheduling deadlock fix (t3.medium ~300m free/node)
+      memory: "512Mi"  # Burst to 500m limit during Bedrock inference (Burstable QoS)
     limits:
       cpu: "500m"
       memory: "512Mi"
