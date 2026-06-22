@@ -16,15 +16,15 @@ image:
 # ── Image tags — all services use the latest pushed tag ──────────────────────
 # GitHub Actions overwrites these with the git SHA on every push.
 coreService:
-  tag: "92087c9b0d5767416fb1ad91325c1f5c2d54157b"
+  tag: "ab06005d12b3b76c57e0700b4c3500342dee0aa3"
   serviceAccount:
     roleArn: "arn:aws:iam::692828329130:role/cargotrack-irsa-core-service"
 documentService:
-  tag: "92087c9b0d5767416fb1ad91325c1f5c2d54157b"
+  tag: "ab06005d12b3b76c57e0700b4c3500342dee0aa3"
   serviceAccount:
     roleArn: "arn:aws:iam::692828329130:role/cargotrack-irsa-document-service"
 aiService:
-  tag: "92087c9b0d5767416fb1ad91325c1f5c2d54157b"
+  tag: "ab06005d12b3b76c57e0700b4c3500342dee0aa3"
   serviceAccount:
     roleArn: "arn:aws:iam::692828329130:role/cargotrack-irsa-ai-service"
   env:
@@ -34,7 +34,7 @@ aiService:
     LLM_PROVIDER: "bedrock"
     BEDROCK_MODEL_ID: "amazon.nova-lite-v1:0"
 frontend:
-  tag: "92087c9b0d5767416fb1ad91325c1f5c2d54157b"
+  tag: "ab06005d12b3b76c57e0700b4c3500342dee0aa3"
 # ── HPA — dev: enabled with default CPU targets ───────────────────────────────
 hpa:
   enabled: true
