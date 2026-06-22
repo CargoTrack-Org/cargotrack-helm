@@ -86,7 +86,12 @@ frontend:
     limits:
       cpu: "500m"
       memory: "512Mi"
-# ── Ingress — Production ALB with HTTPS ───────────────────────────────────────
+# ── Ingress — Production ALB (HTTP only — CloudFront handles HTTPS) ───────────
+# CloudFront sits in front of this ALB and handles TLS termination.
+# The ALB origin uses http-only protocol (see modules/cdn/main.tf origin config).
+# CloudFront enforces HTTPS for all user traffic via viewer_protocol_policy:
+#   redirect-to-https
+# The ALB therefore only needs HTTP:80 — no certificate required here.
 ingress:
   enabled: true
   className: alb
@@ -94,11 +99,8 @@ ingress:
     kubernetes.io/ingress.class: alb
     alb.ingress.kubernetes.io/scheme: internet-facing
     alb.ingress.kubernetes.io/target-type: ip
-    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
-    alb.ingress.kubernetes.io/ssl-redirect: "443"
-    alb.ingress.kubernetes.io/ssl-policy: "ELBSecurityPolicy-TLS13-1-2-2021-06"
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}]'
     alb.ingress.kubernetes.io/group.name: cargotrack-prod
-    alb.ingress.kubernetes.io/certificate-arn: "" # INJECT: ACM cert ARN
     alb.ingress.kubernetes.io/healthcheck-path: /health
     alb.ingress.kubernetes.io/healthcheck-interval-seconds: "15"
     alb.ingress.kubernetes.io/healthcheck-timeout-seconds: "5"
