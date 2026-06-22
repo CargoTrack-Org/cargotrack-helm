@@ -18,14 +18,12 @@ global:
   environment: prod
   region: us-east-1
   namespace: cargotrack-prod
-
 image:
   registry: "692828329130.dkr.ecr.us-east-1.amazonaws.com"
   pullPolicy: Always
-
 # ── Core Service ──────────────────────────────────────────────────────────────
 coreService:
-  tag: latest            # CI/CD replaces with git SHA on every push
+  tag: ab06005d12b3b76c57e0700b4c3500342dee0aa3 # CI/CD replaces with git SHA on every push
   replicas: 3
   resources:
     requests:
@@ -35,14 +33,13 @@ coreService:
       cpu: "500m"
       memory: "512Mi"
   serviceAccount:
-    roleArn: ""          # INJECT: terraform output irsa_core_service_role_arn
+    roleArn: "" # INJECT: terraform output irsa_core_service_role_arn
   env:
     NODE_ENV: production
     PORT: "4000"
-
 # ── Document Service ──────────────────────────────────────────────────────────
 documentService:
-  tag: latest
+  tag: ab06005d12b3b76c57e0700b4c3500342dee0aa3
   replicas: 3
   resources:
     requests:
@@ -52,17 +49,16 @@ documentService:
       cpu: "500m"
       memory: "512Mi"
   serviceAccount:
-    roleArn: ""          # INJECT: terraform output irsa_document_service_role_arn
+    roleArn: "" # INJECT: terraform output irsa_document_service_role_arn
   env:
     NODE_ENV: production
     PORT: "4001"
-
 # ── AI Service ────────────────────────────────────────────────────────────────
 # minReplicas: 1 — production uses a single SQS consumer to avoid duplicate
 # compliance analysis. The HPA can scale up under CPU load (Bedrock calls
 # are CPU-bound on the node side). Scale-in is very conservative (10-min window).
 aiService:
-  tag: latest
+  tag: ab06005d12b3b76c57e0700b4c3500342dee0aa3
   replicas: 1
   resources:
     requests:
@@ -72,17 +68,16 @@ aiService:
       cpu: "500m"
       memory: "512Mi"
   serviceAccount:
-    roleArn: ""          # INJECT: terraform output irsa_ai_service_role_arn
+    roleArn: "" # INJECT: terraform output irsa_ai_service_role_arn
   env:
     NODE_ENV: production
     PORT: "4002"
-    MOCK_AGENT: "false"              # Real Amazon Bedrock Nova Pro
-    TEXTRACT_ENABLED: "true"         # Real AWS Textract
+    MOCK_AGENT: "false" # Real Amazon Bedrock Nova Pro
+    TEXTRACT_ENABLED: "true" # Real AWS Textract
     BEDROCK_MODEL_ID: "amazon.nova-pro-v1:0"
-
 # ── Frontend ──────────────────────────────────────────────────────────────────
 frontend:
-  tag: latest
+  tag: ab06005d12b3b76c57e0700b4c3500342dee0aa3
   replicas: 3
   resources:
     requests:
@@ -91,7 +86,6 @@ frontend:
     limits:
       cpu: "500m"
       memory: "512Mi"
-
 # ── Ingress — Production ALB with HTTPS ───────────────────────────────────────
 ingress:
   enabled: true
@@ -104,13 +98,12 @@ ingress:
     alb.ingress.kubernetes.io/ssl-redirect: "443"
     alb.ingress.kubernetes.io/ssl-policy: "ELBSecurityPolicy-TLS13-1-2-2021-06"
     alb.ingress.kubernetes.io/group.name: cargotrack-prod
-    alb.ingress.kubernetes.io/certificate-arn: ""     # INJECT: ACM cert ARN
+    alb.ingress.kubernetes.io/certificate-arn: "" # INJECT: ACM cert ARN
     alb.ingress.kubernetes.io/healthcheck-path: /health
     alb.ingress.kubernetes.io/healthcheck-interval-seconds: "15"
     alb.ingress.kubernetes.io/healthcheck-timeout-seconds: "5"
     alb.ingress.kubernetes.io/healthy-threshold-count: "2"
     alb.ingress.kubernetes.io/unhealthy-threshold-count: "3"
-
 # ── HPA — Production overrides ────────────────────────────────────────────────
 hpa:
   enabled: true
@@ -123,7 +116,7 @@ hpa:
     maxReplicas: 20
     cpuTargetPercent: 70
   aiService:
-    minReplicas: 1        # Singleton consumer; HPA can scale up under CPU pressure
+    minReplicas: 1 # Singleton consumer; HPA can scale up under CPU pressure
     maxReplicas: 5
     cpuTargetPercent: 70
     scaleInStabilizationSeconds: 600
@@ -131,7 +124,6 @@ hpa:
     minReplicas: 3
     maxReplicas: 20
     cpuTargetPercent: 70
-
 # ── AWS Resources ─────────────────────────────────────────────────────────────
 # Populated by post-apply-setup.sh after terraform apply
 aws:
