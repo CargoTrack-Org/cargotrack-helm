@@ -4,13 +4,13 @@
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: {{ .Values.coreService.serviceAccount.name }}
+  name: {{ .Values.serviceAccount.name }}
   namespace: {{ .Values.global.namespace }}
   annotations:
-    eks.amazonaws.com/role-arn: {{ .Values.coreService.serviceAccount.roleArn | quote }}
+    eks.amazonaws.com/role-arn: {{ .Values.serviceAccount.roleArn | quote }}
   labels:
     app: core-service
-    {{- include "cargotrack.labels" . | nindent 4 }}
+    {{- include "core-service.labels" . | nindent 4 }}
 automountServiceAccountToken: true
 ---
 # ── Core Service Deployment ───────────────────────────────────────────────────
@@ -26,11 +26,11 @@ metadata:
   namespace: {{ .Values.global.namespace }}
   labels:
     app: core-service
-    {{- include "cargotrack.labels" . | nindent 4 }}
+    {{- include "core-service.labels" . | nindent 4 }}
   annotations:
     kubernetes.io/change-cause: "Helm release {{ .Release.Revision }}"
 spec:
-  replicas: {{ .Values.coreService.replicas }}
+  replicas: {{ .Values.replicas }}
   selector:
     matchLabels:
       app: core-service
@@ -52,7 +52,7 @@ spec:
         instrumentation.opentelemetry.io/inject-dotnet: "false"
         instrumentation.opentelemetry.io/inject-nodejs: "true"
     spec:
-      serviceAccountName: {{ .Values.coreService.serviceAccount.name }}
+      serviceAccountName: {{ .Values.serviceAccount.name }}
       terminationGracePeriodSeconds: 60   # allow in-flight requests to drain
 
       # ── Spread pods across availability zones ─────────────────────────────
@@ -102,11 +102,11 @@ spec:
 
       containers:
         - name: core-service
-          image: {{ .Values.image.registry }}/{{ .Values.coreService.image }}:{{ .Values.coreService.tag }}
+          image: {{ .Values.image.registry }}/{{ .Values.image.name }}:{{ .Values.image.tag }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
             - name: http
-              containerPort: {{ .Values.coreService.port }}
+              containerPort: {{ .Values.port }}
               protocol: TCP
 
           # ── Environment variables ─────────────────────────────────────────
@@ -117,16 +117,16 @@ spec:
 
           env:
             - name: NODE_ENV
-              value: {{ .Values.coreService.env.NODE_ENV | quote }}
+              value: {{ .Values.env.NODE_ENV | quote }}
             - name: PORT
-              value: {{ .Values.coreService.port | quote }}
+              value: {{ .Values.port | quote }}
 
             # Internal service URL for copilot proxy
             - name: AI_SERVICE_URL
-              value: "http://ai-service:{{ .Values.aiService.port }}"
+              value: "http://ai-service:{{ .Values.aiServicePort }}"
 
             # Sensitive credentials from Kubernetes Secret
-            # (created by scripts/post-apply-setup.sh from AWS Secrets Manager)
+            # (created by Terraform from AWS Secrets Manager)
             - name: DATABASE_PASSWORD
               valueFrom:
                 secretKeyRef:
@@ -145,7 +145,7 @@ spec:
 
           # ── Resource management ───────────────────────────────────────────
           resources:
-            {{- toYaml .Values.coreService.resources | nindent 12 }}
+            {{- toYaml .Values.resources | nindent 12 }}
 
           # ── Readiness probe ───────────────────────────────────────────────
           # Delayed to allow Prisma migrations to complete before traffic arrives
@@ -175,22 +175,3 @@ spec:
             allowPrivilegeEscalation: false
             runAsNonRoot: true
             runAsUser: 1000
----
-# ── Core Service — ClusterIP Service ─────────────────────────────────────────
-# Internal only. Accessed by frontend nginx proxy (/api/*).
-apiVersion: v1
-kind: Service
-metadata:
-  name: core-service
-  namespace: {{ .Values.global.namespace }}
-  labels:
-    app: core-service
-spec:
-  type: ClusterIP
-  selector:
-    app: core-service
-  ports:
-    - name: http
-      port: {{ .Values.coreService.port }}
-      targetPort: http
-      protocol: TCP

@@ -1,0 +1,41 @@
+# AI Service — Prod Environment Overrides
+# Production: real Bedrock Nova Pro, Textract enabled, singleton SQS consumer
+global:
+  environment: prod
+  namespace: cargotrack-prod
+
+image:
+  registry: "692828329130.dkr.ecr.us-east-1.amazonaws.com"
+  tag: "ab06005d12b3b76c57e0700b4c3500342dee0aa3"  # CI/CD overwrites on every push
+  pullPolicy: Always
+
+# minReplicas: 1 — singleton SQS consumer for production.
+# HPA can still scale up under CPU pressure during concurrent Bedrock inference.
+replicas: 1
+
+serviceAccount:
+  # Prod and dev share the same IRSA roles in this single-cluster evaluation setup.
+  roleArn: "arn:aws:iam::692828329130:role/cargotrack-irsa-ai-service"
+
+resources:
+  requests:
+    cpu: "200m"
+    memory: "512Mi"
+  limits:
+    cpu: "500m"
+    memory: "512Mi"
+
+env:
+  NODE_ENV: production
+  MOCK_AGENT: "false"
+  TEXTRACT_ENABLED: "true"
+  LLM_PROVIDER: "bedrock"
+  # Production uses Nova Pro for higher accuracy compliance analysis
+  BEDROCK_MODEL_ID: "amazon.nova-pro-v1:0"
+
+hpa:
+  enabled: true
+  minReplicas: 1
+  maxReplicas: 5
+  cpuTargetPercent: 70
+  scaleInStabilizationSeconds: 600

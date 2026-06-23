@@ -1,0 +1,41 @@
+# CargoTrack — Core Service Chart Default Values
+# Override per-environment in values-dev.yaml / values-prod.yaml
+
+global:
+  environment: dev
+  namespace: cargotrack-dev
+  region: us-east-1
+
+image:
+  registry: ""          # INJECT: <account>.dkr.ecr.us-east-1.amazonaws.com
+  name: cargotrack-core
+  tag: v1
+  pullPolicy: Always
+
+replicas: 2
+port: 4000
+
+# Port of ai-service — used to build AI_SERVICE_URL env var passed to core-service.
+# Must match the port value in ai-service chart.
+aiServicePort: 4002
+
+serviceAccount:
+  name: core-service
+  roleArn: ""           # INJECT: arn:aws:iam::<account>:role/cargotrack-irsa-core-service
+
+resources:
+  requests:
+    cpu: "250m"
+    memory: "256Mi"
+  limits:
+    cpu: "500m"
+    memory: "512Mi"
+
+env:
+  NODE_ENV: production
+
+hpa:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  cpuTargetPercent: 70

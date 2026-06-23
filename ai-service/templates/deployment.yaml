@@ -5,13 +5,13 @@
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: {{ .Values.aiService.serviceAccount.name }}
+  name: {{ .Values.serviceAccount.name }}
   namespace: {{ .Values.global.namespace }}
   annotations:
-    eks.amazonaws.com/role-arn: {{ .Values.aiService.serviceAccount.roleArn | quote }}
+    eks.amazonaws.com/role-arn: {{ .Values.serviceAccount.roleArn | quote }}
   labels:
     app: ai-service
-    {{- include "cargotrack.labels" . | nindent 4 }}
+    {{- include "ai-service.labels" . | nindent 4 }}
 automountServiceAccountToken: true
 ---
 # ── AI Service Deployment ─────────────────────────────────────────────────────
@@ -30,11 +30,11 @@ metadata:
   namespace: {{ .Values.global.namespace }}
   labels:
     app: ai-service
-    {{- include "cargotrack.labels" . | nindent 4 }}
+    {{- include "ai-service.labels" . | nindent 4 }}
   annotations:
     kubernetes.io/change-cause: "Helm release {{ .Release.Revision }}"
 spec:
-  replicas: {{ .Values.aiService.replicas }}
+  replicas: {{ .Values.replicas }}
   selector:
     matchLabels:
       app: ai-service
@@ -47,19 +47,20 @@ spec:
     metadata:
       labels:
         app: ai-service
-      # ── OTEL auto-instrumentation: keep only Node.js agent ─────────────────────────
+      # ── OTEL auto-instrumentation ─────────────────────────────────────────────────
       # The CloudWatch Observability add-on auto-injects init containers for ALL
       # four language agents (java, nodejs, python, dotnet) via its mutating
       # admission webhook. ai-service is Node.js only — opt out of the other three.
-      # Without these, each pod gets 4 init containers instead of 1, wasting
-      # ~352Mi memory requests and adding startup latency.
+      # inject-nodejs is set to "false" here to prevent OTel log flooding from
+      # the Node.js agent (causes excessive CloudWatch Logs ingest charges).
+      # Tracing is handled via the CargoTrack application-level instrumentation.
       annotations:
         instrumentation.opentelemetry.io/inject-java: "false"
         instrumentation.opentelemetry.io/inject-python: "false"
         instrumentation.opentelemetry.io/inject-dotnet: "false"
-        instrumentation.opentelemetry.io/inject-nodejs: "true"
+        instrumentation.opentelemetry.io/inject-nodejs: "false"
     spec:
-      serviceAccountName: {{ .Values.aiService.serviceAccount.name }}
+      serviceAccountName: {{ .Values.serviceAccount.name }}
       # 60s grace: allow in-flight Bedrock calls and SQS message processing to complete
       terminationGracePeriodSeconds: 60
 
@@ -78,11 +79,11 @@ spec:
 
       containers:
         - name: ai-service
-          image: {{ .Values.image.registry }}/{{ .Values.aiService.image }}:{{ .Values.aiService.tag }}
+          image: {{ .Values.image.registry }}/{{ .Values.image.name }}:{{ .Values.image.tag }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
             - name: http
-              containerPort: {{ .Values.aiService.port }}
+              containerPort: {{ .Values.port }}
               protocol: TCP
 
           # ── Non-sensitive config (AWS resource identifiers) ───────────────
@@ -92,18 +93,18 @@ spec:
 
           env:
             - name: NODE_ENV
-              value: {{ .Values.aiService.env.NODE_ENV | quote }}
+              value: {{ .Values.env.NODE_ENV | quote }}
             - name: PORT
-              value: {{ .Values.aiService.port | quote }}
+              value: {{ .Values.port | quote }}
             - name: MOCK_AGENT
-              value: {{ .Values.aiService.env.MOCK_AGENT | quote }}
+              value: {{ .Values.env.MOCK_AGENT | quote }}
             - name: TEXTRACT_ENABLED
-              value: {{ .Values.aiService.env.TEXTRACT_ENABLED | default "false" | quote }}
+              value: {{ .Values.env.TEXTRACT_ENABLED | default "false" | quote }}
             - name: LLM_PROVIDER
-              value: {{ .Values.aiService.env.LLM_PROVIDER | default "bedrock" | quote }}
-            {{- if .Values.aiService.env.BEDROCK_MODEL_ID }}
+              value: {{ .Values.env.LLM_PROVIDER | default "bedrock" | quote }}
+            {{- if .Values.env.BEDROCK_MODEL_ID }}
             - name: BEDROCK_MODEL_ID
-              value: {{ .Values.aiService.env.BEDROCK_MODEL_ID | quote }}
+              value: {{ .Values.env.BEDROCK_MODEL_ID | quote }}
             {{- end }}
 
             # DB credentials (ai-service reads shipment data for analysis)
@@ -114,9 +115,8 @@ spec:
                   key: DATABASE_PASSWORD
 
           # ── Resource management ───────────────────────────────────────────
-          # Higher CPU/memory: concurrent Bedrock calls + SQS polling + 5 knowledge base catalogs
           resources:
-            {{- toYaml .Values.aiService.resources | nindent 12 }}
+            {{- toYaml .Values.resources | nindent 12 }}
 
           # ── Readiness probe ───────────────────────────────────────────────
           readinessProbe:
@@ -145,23 +145,3 @@ spec:
             allowPrivilegeEscalation: false
             runAsNonRoot: true
             runAsUser: 1000
----
-# ── AI Service — ClusterIP Service ───────────────────────────────────────────
-# Internal only. Called by core-service copilot proxy (/api/copilot/*)
-# and by the SQS compliance handler (internal message processing).
-apiVersion: v1
-kind: Service
-metadata:
-  name: ai-service
-  namespace: {{ .Values.global.namespace }}
-  labels:
-    app: ai-service
-spec:
-  type: ClusterIP
-  selector:
-    app: ai-service
-  ports:
-    - name: http
-      port: {{ .Values.aiService.port }}
-      targetPort: http
-      protocol: TCP

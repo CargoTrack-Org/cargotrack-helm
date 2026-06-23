@@ -1,0 +1,63 @@
+# CargoTrack — Frontend Chart Default Values
+# Override per-environment in values-dev.yaml / values-prod.yaml
+
+global:
+  environment: dev
+  namespace: cargotrack-dev
+  region: us-east-1
+
+image:
+  registry: ""          # INJECT: <account>.dkr.ecr.us-east-1.amazonaws.com
+  name: cargotrack-frontend
+  tag: v1
+  pullPolicy: Always
+
+replicas: 2
+port: 8080              # nginx runs as non-root on 8080 (not 80)
+
+# Ports of downstream services — used to build nginx proxy env vars.
+# Must match the port values in core-service and document-service charts.
+coreServicePort: 4000
+documentServicePort: 4001
+
+resources:
+  requests:
+    cpu: "100m"
+    memory: "128Mi"
+  limits:
+    cpu: "500m"
+    memory: "256Mi"
+
+hpa:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  cpuTargetPercent: 70
+
+# ── Ingress — AWS Load Balancer Controller ────────────────────────────────────
+# When enabled, the ALB controller provisions a real internet-facing AWS ALB.
+# Traffic flow: Internet → ALB (port 80) → frontend pod (port .port above)
+# nginx.conf inside the container then proxies:
+#   /api/documents/* → document-service:4001 (in-cluster)
+#   /api/*           → core-service:4000 (in-cluster)
+#   /                → React SPA static files
+ingress:
+  enabled: true
+  # ingressClassName drives ALB controller selection (preferred over annotation)
+  className: alb
+  annotations:
+    # ALB scheme: internet-facing = public ALB visible on the internet
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    # target-type ip: routes directly to pod IPs via VPC CNI — no node-port hop
+    alb.ingress.kubernetes.io/target-type: ip
+    # HTTP only on port 80; HTTPS can be added when ACM cert is ready
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}]'
+    # Health check on nginx's /health endpoint
+    alb.ingress.kubernetes.io/healthcheck-path: /health
+    alb.ingress.kubernetes.io/healthcheck-interval-seconds: "15"
+    alb.ingress.kubernetes.io/healthcheck-timeout-seconds: "5"
+    alb.ingress.kubernetes.io/healthy-threshold-count: "2"
+    alb.ingress.kubernetes.io/unhealthy-threshold-count: "3"
+    # ALB attributes (single line — avoids YAML block scalar issues in annotations)
+    alb.ingress.kubernetes.io/load-balancer-attributes: "routing.http2.enabled=true,idle_timeout.timeout_seconds=60,deletion_protection.enabled=false,access_logs.s3.enabled=false"
+    alb.ingress.kubernetes.io/backend-protocol: HTTP

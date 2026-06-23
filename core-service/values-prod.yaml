@@ -1,0 +1,32 @@
+# Core Service — Prod Environment Overrides
+global:
+  environment: prod
+  namespace: cargotrack-prod
+
+image:
+  registry: "692828329130.dkr.ecr.us-east-1.amazonaws.com"
+  tag: "ab06005d12b3b76c57e0700b4c3500342dee0aa3"  # CI/CD overwrites on every push
+  pullPolicy: Always
+
+replicas: 3
+
+serviceAccount:
+  # Prod and dev share the same IRSA roles in this single-cluster evaluation setup.
+  roleArn: "arn:aws:iam::692828329130:role/cargotrack-irsa-core-service"
+
+resources:
+  requests:
+    cpu: "250m"
+    memory: "256Mi"
+  limits:
+    cpu: "500m"
+    memory: "512Mi"
+
+env:
+  NODE_ENV: production
+
+hpa:
+  enabled: true
+  minReplicas: 3
+  maxReplicas: 20
+  cpuTargetPercent: 70

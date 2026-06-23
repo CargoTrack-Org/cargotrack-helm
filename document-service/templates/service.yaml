@@ -1,0 +1,20 @@
+---
+# ── Document Service — ClusterIP Service ─────────────────────────────────────
+# Internal only. Accessed via ALB path-based routing (/api/documents/*).
+apiVersion: v1
+kind: Service
+metadata:
+  name: document-service
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: document-service
+    {{- include "document-service.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    app: document-service
+  ports:
+    - name: http
+      port: {{ .Values.port }}
+      targetPort: http
+      protocol: TCP

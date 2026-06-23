@@ -1,0 +1,20 @@
+---
+# ── Core Service — ClusterIP Service ─────────────────────────────────────────
+# Internal only. Accessed by frontend nginx proxy (/api/*) via ALB path routing.
+apiVersion: v1
+kind: Service
+metadata:
+  name: core-service
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: core-service
+    {{- include "core-service.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    app: core-service
+  ports:
+    - name: http
+      port: {{ .Values.port }}
+      targetPort: http
+      protocol: TCP

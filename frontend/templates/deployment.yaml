@@ -9,12 +9,11 @@ metadata:
   namespace: {{ .Values.global.namespace }}
   labels:
     app: frontend
-    {{- include "cargotrack.labels" . | nindent 4 }}
+    {{- include "frontend.labels" . | nindent 4 }}
 automountServiceAccountToken: false
 ---
 # ── Frontend Deployment ───────────────────────────────────────────────────────
 # nginx reverse proxy + React SPA static file server.
-# Acts as the entry point for all browser traffic.
 # At startup, entrypoint.sh runs envsubst to inject:
 #   CORE_SERVICE_URL     → nginx.conf proxy_pass for /api/*
 #   DOCUMENT_SERVICE_URL → nginx.conf proxy_pass for /api/documents/*
@@ -25,11 +24,11 @@ metadata:
   namespace: {{ .Values.global.namespace }}
   labels:
     app: frontend
-    {{- include "cargotrack.labels" . | nindent 4 }}
+    {{- include "frontend.labels" . | nindent 4 }}
   annotations:
     kubernetes.io/change-cause: "Helm release {{ .Release.Revision }}"
 spec:
-  replicas: {{ .Values.frontend.replicas }}
+  replicas: {{ .Values.replicas }}
   selector:
     matchLabels:
       app: frontend
@@ -65,33 +64,30 @@ spec:
               app: frontend
 
       # ── Pod-level security context ─────────────────────────────────────────
-      # nginx group owns cache/log directories
       securityContext:
         fsGroup: 101    # nginx group ID
 
       containers:
         - name: frontend
-          image: {{ .Values.image.registry }}/{{ .Values.frontend.image }}:{{ .Values.frontend.tag }}
+          image: {{ .Values.image.registry }}/{{ .Values.image.name }}:{{ .Values.image.tag }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
             - name: http
-              containerPort: {{ .Values.frontend.port }}
+              containerPort: {{ .Values.port }}
               protocol: TCP
 
           env:
             # Injected by entrypoint.sh via envsubst into nginx.conf template
             - name: CORE_SERVICE_URL
-              value: "http://core-service:{{ .Values.coreService.port }}"
+              value: "http://core-service:{{ .Values.coreServicePort }}"
             - name: DOCUMENT_SERVICE_URL
-              value: "http://document-service:{{ .Values.documentService.port }}"
+              value: "http://document-service:{{ .Values.documentServicePort }}"
 
           # ── Resource management ───────────────────────────────────────────
           resources:
-            {{- toYaml .Values.frontend.resources | nindent 12 }}
+            {{- toYaml .Values.resources | nindent 12 }}
 
           # ── Readiness probe ───────────────────────────────────────────────
-          # /health is defined in nginx.conf — returns 200 OK when nginx is ready.
-          # FIXED: was "/" which always returned 200 even before envsubst completed.
           readinessProbe:
             httpGet:
               path: /health
@@ -114,31 +110,9 @@ spec:
             successThreshold: 1
 
           # ── Container-level security context ──────────────────────────────
-          # nginx runs on port 8080 as the nginx user (UID 101) — no root required.
           securityContext:
             allowPrivilegeEscalation: false
             runAsNonRoot: true
             runAsUser: 101       # nginx user
             runAsGroup: 101      # nginx group
             readOnlyRootFilesystem: false  # nginx writes to /tmp and /var/cache/nginx
----
-# ── Frontend — NodePort Service ───────────────────────────────────────────────
-# NodePort is required by the AWS Load Balancer Controller when using
-# target-type: ip (ALB routes directly to pod IPs, not node ports).
-# The ALB health check hits /health on this service.
-apiVersion: v1
-kind: Service
-metadata:
-  name: frontend
-  namespace: {{ .Values.global.namespace }}
-  labels:
-    app: frontend
-spec:
-  type: NodePort
-  selector:
-    app: frontend
-  ports:
-    - name: http
-      port: {{ .Values.frontend.port }}
-      targetPort: http
-      protocol: TCP

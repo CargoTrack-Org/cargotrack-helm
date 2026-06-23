@@ -1,0 +1,13 @@
+apiVersion: v2
+name: document-service
+description: CargoTrack Document Service — S3 upload/download, Textract extraction
+type: application
+version: 1.0.0
+appVersion: "3.0.0"
+keywords:
+  - cargotrack
+  - document-service
+  - s3
+  - textract
+maintainers:
+  - name: CargoTrack Team

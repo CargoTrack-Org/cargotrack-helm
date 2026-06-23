@@ -1,0 +1,12 @@
+apiVersion: v2
+name: frontend
+description: CargoTrack Frontend — nginx + React SPA
+type: application
+version: 1.0.0
+appVersion: "3.0.0"
+keywords:
+  - cargotrack
+  - frontend
+  - nginx
+maintainers:
+  - name: CargoTrack Team

@@ -1,0 +1,12 @@
+apiVersion: v2
+name: core-service
+description: CargoTrack Core Service — Auth, Shipments, Admin, Reports, EventBridge publisher
+type: application
+version: 1.0.0
+appVersion: "3.0.0"
+keywords:
+  - cargotrack
+  - core-service
+  - prisma
+maintainers:
+  - name: CargoTrack Team

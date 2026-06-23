@@ -1,0 +1,48 @@
+# CargoTrack — AI Service Chart Default Values
+# Override per-environment in values-dev.yaml / values-prod.yaml
+
+global:
+  environment: dev
+  namespace: cargotrack-dev
+  region: us-east-1
+
+image:
+  registry: ""          # INJECT: <account>.dkr.ecr.us-east-1.amazonaws.com
+  name: cargotrack-ai
+  tag: v1
+  pullPolicy: Always
+
+# replicas: 2 by default.
+# IMPORTANT: ai-service runs a continuous SQS polling loop.
+# SQS visibility timeout (300s) prevents duplicate processing.
+# For strict singleton consumption, set minReplicas: 1 in values-prod.yaml.
+replicas: 2
+port: 4002
+
+serviceAccount:
+  name: ai-service
+  roleArn: ""           # INJECT: arn:aws:iam::<account>:role/cargotrack-irsa-ai-service
+
+resources:
+  requests:
+    cpu: "200m"
+    memory: "512Mi"
+  limits:
+    cpu: "500m"
+    memory: "512Mi"
+
+env:
+  NODE_ENV: production
+  MOCK_AGENT: "false"         # Set to "true" only in local dev without Bedrock access
+  TEXTRACT_ENABLED: "true"    # Set to "false" only in local dev without Textract access
+  LLM_PROVIDER: "bedrock"
+  BEDROCK_MODEL_ID: "amazon.nova-lite-v1:0"
+
+hpa:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  cpuTargetPercent: 70
+  # Conservative scale-in: preserve SQS polling state continuity.
+  # ai-service holds long-running Bedrock inference calls — don't scale down too fast.
+  scaleInStabilizationSeconds: 600

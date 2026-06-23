@@ -1,0 +1,55 @@
+{{- if .Values.ingress.enabled }}
+---
+# ── Frontend — AWS ALB Ingress ────────────────────────────────────────────────
+# Controller: AWS Load Balancer Controller (NOT nginx, NOT Istio, NOT KGateway)
+#
+# Traffic flow:
+#   Internet → ALB (internet-facing, port 80) → frontend Service (port {{ .Values.port }})
+#   nginx inside the pod then proxies internally:
+#     /api/documents/* → document-service:{{ .Values.documentServicePort }}  (in-cluster, ClusterIP)
+#     /api/*           → core-service:{{ .Values.coreServicePort }}           (in-cluster, ClusterIP)
+#     /                → React SPA static files served by nginx
+#
+# The ALB is created automatically by the controller when this Ingress is applied.
+# The ALB DNS name is visible under:
+#   kubectl get ingress -n {{ .Values.global.namespace }}
+#
+# Environment: {{ .Values.global.environment }}
+# Namespace:   {{ .Values.global.namespace }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: cargotrack-ingress
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: frontend
+    environment: {{ .Values.global.environment }}
+    {{- include "frontend.labels" . | nindent 4 }}
+  annotations:
+    # ── Static annotations from values.yaml ─────────────────────────────────
+    {{- toYaml .Values.ingress.annotations | nindent 4 }}
+    # ── Dynamic tags (environment injected at render time) ───────────────────
+    # These appear in the AWS console on the ALB resource.
+    alb.ingress.kubernetes.io/tags: >-
+      Project=cargotrack,
+      ManagedBy=argocd,
+      Environment={{ .Values.global.environment }}
+spec:
+  # ingressClassName: alb → selects the AWS Load Balancer Controller
+  # This is the modern way (Kubernetes 1.18+), preferred over the legacy
+  # kubernetes.io/ingress.class annotation.
+  ingressClassName: {{ .Values.ingress.className }}
+  rules:
+    - http:
+        paths:
+          # Single path rule: all traffic enters through frontend nginx.
+          # nginx.conf inside the pod routes /api/* internally to backend services.
+          # This avoids exposing core-service and document-service to the ALB directly.
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend
+                port:
+                  number: {{ .Values.port }}
+{{- end }}

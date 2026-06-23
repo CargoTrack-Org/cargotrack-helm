@@ -4,13 +4,13 @@
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: {{ .Values.documentService.serviceAccount.name }}
+  name: {{ .Values.serviceAccount.name }}
   namespace: {{ .Values.global.namespace }}
   annotations:
-    eks.amazonaws.com/role-arn: {{ .Values.documentService.serviceAccount.roleArn | quote }}
+    eks.amazonaws.com/role-arn: {{ .Values.serviceAccount.roleArn | quote }}
   labels:
     app: document-service
-    {{- include "cargotrack.labels" . | nindent 4 }}
+    {{- include "document-service.labels" . | nindent 4 }}
 automountServiceAccountToken: true
 ---
 # ── Document Service Deployment ───────────────────────────────────────────────
@@ -27,11 +27,11 @@ metadata:
   namespace: {{ .Values.global.namespace }}
   labels:
     app: document-service
-    {{- include "cargotrack.labels" . | nindent 4 }}
+    {{- include "document-service.labels" . | nindent 4 }}
   annotations:
     kubernetes.io/change-cause: "Helm release {{ .Release.Revision }}"
 spec:
-  replicas: {{ .Values.documentService.replicas }}
+  replicas: {{ .Values.replicas }}
   selector:
     matchLabels:
       app: document-service
@@ -45,15 +45,13 @@ spec:
       labels:
         app: document-service
       # ── OTEL auto-instrumentation: keep only Node.js agent ─────────────────────────
-      # CloudWatch Observability injects all 4 agents by default.
-      # document-service is Node.js only — opt out of java/python/dotnet.
       annotations:
         instrumentation.opentelemetry.io/inject-java: "false"
         instrumentation.opentelemetry.io/inject-python: "false"
         instrumentation.opentelemetry.io/inject-dotnet: "false"
         instrumentation.opentelemetry.io/inject-nodejs: "true"
     spec:
-      serviceAccountName: {{ .Values.documentService.serviceAccount.name }}
+      serviceAccountName: {{ .Values.serviceAccount.name }}
       terminationGracePeriodSeconds: 30   # allow in-flight S3/Textract calls to finish
 
       # ── Spread pods across availability zones ─────────────────────────────
@@ -66,8 +64,6 @@ spec:
               app: document-service
 
       # ── Pod-level security context ─────────────────────────────────────────
-      # fsGroup: 1000 — kubelet sets group ownership on mounted volumes to 1000
-      # (matching runAsUser: 1000 below), making them writable without root.
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000
@@ -75,28 +71,18 @@ spec:
 
       # ── Volumes ───────────────────────────────────────────────────────────────
       # /uploads — ephemeral scratch space for document-service.
-      #
-      # The document-service Node.js app calls mkdir('/uploads') at startup.
-      # Mounting an emptyDir here means:
-      #   1. The directory EXISTS before the container starts (kubelet creates it)
-      #   2. The container does NOT need to create it → no EACCES error
-      #   3. The directory is writable because fsGroup: 1000 sets group ownership
-      #
-      # emptyDir is correct here because document-service uploads are forwarded
-      # to S3 (module.storage.bucket_id). The /uploads path is only a temporary
-      # staging area — persistence across pod restarts is not required.
-      # If durable local storage becomes necessary, replace with a PVC.
+      # emptyDir is correct: uploads are forwarded to S3; local path is temporary staging only.
       volumes:
         - name: uploads-scratch
           emptyDir: {}
 
       containers:
         - name: document-service
-          image: {{ .Values.image.registry }}/{{ .Values.documentService.image }}:{{ .Values.documentService.tag }}
+          image: {{ .Values.image.registry }}/{{ .Values.image.name }}:{{ .Values.image.tag }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
             - name: http
-              containerPort: {{ .Values.documentService.port }}
+              containerPort: {{ .Values.port }}
               protocol: TCP
 
           # ── Non-sensitive config (AWS resource identifiers) ───────────────
@@ -106,9 +92,9 @@ spec:
 
           env:
             - name: NODE_ENV
-              value: {{ .Values.documentService.env.NODE_ENV | quote }}
+              value: {{ .Values.env.NODE_ENV | quote }}
             - name: PORT
-              value: {{ .Values.documentService.port | quote }}
+              value: {{ .Values.port | quote }}
 
             # DB credentials (document-service reads shipment data for associations)
             - name: DATABASE_PASSWORD
@@ -126,7 +112,7 @@ spec:
 
           # ── Resource management ───────────────────────────────────────────
           resources:
-            {{- toYaml .Values.documentService.resources | nindent 12 }}
+            {{- toYaml .Values.resources | nindent 12 }}
 
           # ── Readiness probe ───────────────────────────────────────────────
           readinessProbe:
@@ -151,9 +137,6 @@ spec:
             successThreshold: 1
 
           # ── /uploads volume mount ─────────────────────────────────────────
-          # Mount the emptyDir at the path the app tries to mkdir at startup.
-          # The kubelet creates the directory with group 1000 (fsGroup) before
-          # the container starts — no EACCES: permission denied.
           volumeMounts:
             - name: uploads-scratch
               mountPath: /uploads
@@ -163,23 +146,3 @@ spec:
             allowPrivilegeEscalation: false
             runAsNonRoot: true
             runAsUser: 1000
----
-# ── Document Service — ClusterIP Service ─────────────────────────────────────
-# Internal only. Accessed by frontend nginx proxy (/api/documents/*) via
-# ALB path-based routing direct to this service.
-apiVersion: v1
-kind: Service
-metadata:
-  name: document-service
-  namespace: {{ .Values.global.namespace }}
-  labels:
-    app: document-service
-spec:
-  type: ClusterIP
-  selector:
-    app: document-service
-  ports:
-    - name: http
-      port: {{ .Values.documentService.port }}
-      targetPort: http
-      protocol: TCP

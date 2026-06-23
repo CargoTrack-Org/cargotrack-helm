@@ -1,0 +1,20 @@
+---
+# ── AI Service — ClusterIP Service ───────────────────────────────────────────
+# Internal only. Called by core-service copilot proxy (/api/copilot/*).
+apiVersion: v1
+kind: Service
+metadata:
+  name: ai-service
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: ai-service
+    {{- include "ai-service.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    app: ai-service
+  ports:
+    - name: http
+      port: {{ .Values.port }}
+      targetPort: http
+      protocol: TCP

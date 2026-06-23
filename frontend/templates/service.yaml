@@ -1,0 +1,22 @@
+---
+# ── Frontend — NodePort Service ───────────────────────────────────────────────
+# NodePort is required by the AWS Load Balancer Controller when using
+# target-type: ip (ALB routes directly to pod IPs, not node ports).
+# The ALB health check hits /health on this service.
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: frontend
+    {{- include "frontend.labels" . | nindent 4 }}
+spec:
+  type: NodePort
+  selector:
+    app: frontend
+  ports:
+    - name: http
+      port: {{ .Values.port }}
+      targetPort: http
+      protocol: TCP

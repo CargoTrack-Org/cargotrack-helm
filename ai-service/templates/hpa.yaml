@@ -1,0 +1,40 @@
+{{- if .Values.hpa.enabled }}
+# ── AI Service HPA ────────────────────────────────────────────────────────────
+# Scale-in is more conservative than other services to preserve SQS polling
+# state continuity. scaleInStabilizationSeconds defaults to 600 (10 min).
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: ai-service-hpa
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: ai-service
+    {{- include "ai-service.labels" . | nindent 4 }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: ai-service
+  minReplicas: {{ .Values.hpa.minReplicas }}
+  maxReplicas: {{ .Values.hpa.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.hpa.cpuTargetPercent }}
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 90
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 60
+    scaleDown:
+      stabilizationWindowSeconds: {{ .Values.hpa.scaleInStabilizationSeconds | default 600 }}
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 180
+{{- end }}

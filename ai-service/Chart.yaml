@@ -1,0 +1,14 @@
+apiVersion: v2
+name: ai-service
+description: CargoTrack AI Service — Bedrock compliance analysis, Copilot, Route Briefing, Textract, SQS consumer
+type: application
+version: 1.0.0
+appVersion: "3.0.0"
+keywords:
+  - cargotrack
+  - ai-service
+  - bedrock
+  - textract
+  - sqs
+maintainers:
+  - name: CargoTrack Team
