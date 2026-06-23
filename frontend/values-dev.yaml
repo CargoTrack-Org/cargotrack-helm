@@ -2,12 +2,10 @@
 global:
   environment: dev
   namespace: cargotrack-dev
-
 image:
   registry: "692828329130.dkr.ecr.us-east-1.amazonaws.com"
-  tag: "ab06005d12b3b76c57e0700b4c3500342dee0aa3"  # CI/CD overwrites on every push
+  tag: "ab06005d12b3b76c57e0700b4c3500342dee0aa3" # CI/CD overwrites on every push
   pullPolicy: Always
-
 hpa:
   enabled: true
   minReplicas: 2
