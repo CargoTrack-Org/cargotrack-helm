@@ -4,7 +4,7 @@ global:
   namespace: cargotrack-dev
 image:
   registry: "692828329130.dkr.ecr.us-east-1.amazonaws.com"
-  tag: "68ef1df0bc80f5f0b9afb676fb1adabf2dabd512" # CI/CD overwrites on every push
+  tag: "fb91a14db26c1596e74b13ed3f9e63bde2e64db8" # CI/CD overwrites on every push
   pullPolicy: Always
 serviceAccount:
   roleArn: "arn:aws:iam::692828329130:role/cargotrack-irsa-ai-service"
