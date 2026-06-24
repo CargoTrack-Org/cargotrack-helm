@@ -4,7 +4,7 @@ global:
   namespace: cargotrack-prod
 image:
   registry: "692828329130.dkr.ecr.us-east-1.amazonaws.com"
-  tag: "8df37e5c8805eed7054ca7d4b9284ae0e5593f03" # CI/CD overwrites on every push
+  tag: "18cee0eff3b3bdf86e098a7e3de5c79a2bd91e33" # CI/CD overwrites on every push
   pullPolicy: Always
 replicas: 3
 resources:
