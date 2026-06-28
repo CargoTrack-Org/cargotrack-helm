@@ -19,3 +19,8 @@ hpa:
   minReplicas: 3
   maxReplicas: 20
   cpuTargetPercent: 70
+
+ingress:
+  host: "shopp-novaa.co.in"
+  annotations:
+    alb.ingress.kubernetes.io/group.order: "20"

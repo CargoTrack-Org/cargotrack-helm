@@ -11,3 +11,6 @@ hpa:
   minReplicas: 2
   maxReplicas: 10
   cpuTargetPercent: 70
+
+ingress:
+  host: "dev.shopp-novaa.co.in"
