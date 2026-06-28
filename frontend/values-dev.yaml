@@ -4,7 +4,7 @@ global:
   namespace: cargotrack-dev
 image:
   registry: "692828329130.dkr.ecr.us-east-1.amazonaws.com"
-  tag: "a91d54ac567bb5fa2865093df2867903150abc0d" # CI/CD overwrites on every push
+  tag: "88320aed1757eea276fa054397c165c50df4d54a" # CI/CD overwrites on every push
   pullPolicy: Always
 hpa:
   enabled: true
