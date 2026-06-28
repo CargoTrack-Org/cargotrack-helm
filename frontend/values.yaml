@@ -45,6 +45,9 @@ ingress:
   enabled: true
   # ingressClassName drives ALB controller selection (preferred over annotation)
   className: alb
+  # host — used for ALB host-based routing when IngressGroup is enabled.
+  # Override per environment: dev.shopp-novaa.co.in / shopp-novaa.co.in
+  host: ""
   annotations:
     # ALB scheme: internet-facing = public ALB visible on the internet
     alb.ingress.kubernetes.io/scheme: internet-facing
@@ -61,3 +64,8 @@ ingress:
     # ALB attributes (single line — avoids YAML block scalar issues in annotations)
     alb.ingress.kubernetes.io/load-balancer-attributes: "routing.http2.enabled=true,idle_timeout.timeout_seconds=120,deletion_protection.enabled=false,access_logs.s3.enabled=false"
     alb.ingress.kubernetes.io/backend-protocol: HTTP
+    # IngressGroup merges dev and prod Ingress resources into a single shared ALB.
+    # The group.order values ensure dev rules are evaluated before prod rules.
+    # Both namespaces remain fully isolated at the application layer.
+    alb.ingress.kubernetes.io/group.name: cargotrack-shared
+    alb.ingress.kubernetes.io/group.order: "10"
