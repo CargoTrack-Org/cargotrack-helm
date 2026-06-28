@@ -30,10 +30,7 @@ metadata:
     {{- toYaml .Values.ingress.annotations | nindent 4 }}
     # ── Dynamic tags (environment injected at render time) ───────────────────
     # These appear in the AWS console on the ALB resource.
-    alb.ingress.kubernetes.io/tags: >-
-      Project=cargotrack,
-      ManagedBy=argocd,
-      Environment={{ .Values.global.environment }}
+    alb.ingress.kubernetes.io/tags: "Project=cargotrack,ManagedBy=argocd"
 spec:
   # ingressClassName: alb → selects the AWS Load Balancer Controller
   # This is the modern way (Kubernetes 1.18+), preferred over the legacy
