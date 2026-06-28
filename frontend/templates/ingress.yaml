@@ -40,7 +40,9 @@ spec:
   # kubernetes.io/ingress.class annotation.
   ingressClassName: {{ .Values.ingress.className }}
   rules:
-    - {{- if .Values.ingress.host }}host: {{ .Values.ingress.host }}{{ end }}
+    - {{- if .Values.ingress.host }}
+      host: {{ .Values.ingress.host }}
+      {{- end }}
       http:
         paths:
           # Single path rule: all traffic enters through frontend nginx.
