@@ -6,7 +6,7 @@ image:
   registry: "692828329130.dkr.ecr.us-east-1.amazonaws.com"
   tag: "a272bd3e9ad0adf6664a00b591b98fa7750237aa" # CI/CD overwrites on every push
   pullPolicy: Always
-replicas: 3
+replicas: 2
 resources:
   requests:
     cpu: "100m"
@@ -16,8 +16,8 @@ resources:
     memory: "512Mi"
 hpa:
   enabled: true
-  minReplicas: 3
-  maxReplicas: 20
+  minReplicas: 2
+  maxReplicas: 10
   cpuTargetPercent: 70
 ingress:
   host: "shopp-novaa.co.in"
