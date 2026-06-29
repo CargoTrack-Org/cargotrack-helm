@@ -5,7 +5,7 @@ global:
   namespace: cargotrack-prod
 image:
   registry: "692828329130.dkr.ecr.us-east-1.amazonaws.com"
-  tag: "a272bd3e9ad0adf6664a00b591b98fa7750237aa" # CI/CD overwrites on every push
+  tag: "adcafb0a1ec2206923d0f9ec263b0b18a8a293d5" # CI/CD overwrites on every push
   pullPolicy: Always
 # minReplicas: 1 — singleton SQS consumer for production.
 # HPA can still scale up under CPU pressure during concurrent Bedrock inference.
